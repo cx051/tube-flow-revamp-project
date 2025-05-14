@@ -1,9 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { Home, Search, TrendingUp, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  Home, Search, TrendingUp, Settings, ChevronLeft, ChevronRight, 
+  ChevronDown, ChevronUp, Film, Music, Gamepad2, Newspaper, 
+  Tv2, Milestone, BookOpen, Child, Camera
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 type NavItem = {
   name: string;
@@ -12,14 +17,32 @@ type NavItem = {
   path: string;
 };
 
+type CategoryItem = {
+  name: string;
+  icon: React.ElementType;
+};
+
 interface SidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
+const CATEGORIES: CategoryItem[] = [
+  { name: 'Entertainment', icon: Film },
+  { name: 'Music', icon: Music },
+  { name: 'Gaming', icon: Gamepad2 },
+  { name: 'News', icon: Newspaper },
+  { name: 'Live', icon: Tv2 },
+  { name: 'Learning', icon: BookOpen },
+  { name: 'Sports', icon: Milestone },
+  { name: 'Kids', icon: Child },
+  { name: 'Technology', icon: Camera },
+];
+
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string>(activeTab);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const navigate = useNavigate();
   
   // Toggle sidebar collapse state
@@ -65,12 +88,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
       name: 'trending',
       icon: TrendingUp,
       path: '/',
-      action: () => {}
-    },
-    {
-      name: 'settings',
-      icon: Settings,
-      path: '/settings',
       action: () => {}
     }
   ];
@@ -137,27 +154,21 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
       animate={isCollapsed ? "collapsed" : "expanded"}
       className="h-screen relative flex flex-col glass-morphism z-20 overflow-hidden border-r border-white/10"
     >
-      <div className="flex items-center justify-between p-4 border-b border-white/10">
-        <AnimatePresence initial={false}>
-          {!isCollapsed && (
-            <motion.h1
-              variants={logoVariants}
-              initial="collapsed"
-              animate="expanded"
-              exit="collapsed"
-              className="text-xl font-bold text-white flex items-center space-x-1"
-            >
-              <span className="text-red-600">Vue</span>
-              <span>Tube</span>
-            </motion.h1>
-          )}
-        </AnimatePresence>
+      <div className="flex flex-col p-4 border-b border-white/10">
+        <div className="flex items-center justify-center mb-2">
+          <motion.h1
+            className="text-xl font-bold text-white flex items-center space-x-1"
+          >
+            <span className="text-red-600">Vue</span>
+            <span>Tube</span>
+          </motion.h1>
+        </div>
         
         <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={toggleSidebar}
-          className="p-2 rounded-full hover:bg-white/10 transition-colors text-white/80"
+          className="p-2 rounded-full hover:bg-white/10 transition-colors text-white/80 mx-auto"
         >
           {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </motion.button>
@@ -226,10 +237,87 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
               </motion.button>
             </motion.li>
           ))}
+          
+          {/* Categories Dropdown */}
+          <Collapsible
+            open={categoriesOpen && !isCollapsed}
+            onOpenChange={setCategoriesOpen}
+            className="w-full"
+          >
+            <motion.li
+              whileHover={{ scale: isCollapsed ? 1.08 : 1.03 }}
+              className="relative"
+            >
+              <CollapsibleTrigger asChild>
+                <motion.button
+                  className={cn(
+                    "flex items-center w-full py-3 px-3 rounded-xl transition-all duration-200",
+                    categoriesOpen 
+                      ? "text-white" 
+                      : "text-gray-400 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  <div className="relative z-10 flex items-center justify-center w-full">
+                    <span className="relative flex items-center justify-center">
+                      <Film size={20} className={categoriesOpen ? "text-red-500" : ""} />
+                      
+                      {/* Indicator dot for collapsed state */}
+                      {isCollapsed && categoriesOpen && (
+                        <span className="absolute -right-1 -top-1 w-2 h-2 bg-red-500 rounded-full" />
+                      )}
+                    </span>
+                    
+                    {!isCollapsed && (
+                      <>
+                        <span className="ml-4 font-medium capitalize text-left flex-1">
+                          Categories
+                        </span>
+                        {categoriesOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </>
+                    )}
+                  </div>
+                  
+                  {categoriesOpen && !isCollapsed && (
+                    <motion.div
+                      variants={indicatorVariants}
+                      initial="initial"
+                      animate="animate"
+                      className="absolute inset-0 bg-white/10 rounded-xl z-0"
+                    />
+                  )}
+                </motion.button>
+              </CollapsibleTrigger>
+            </motion.li>
+            
+            <CollapsibleContent className="space-y-1 ml-2 mt-1">
+              {CATEGORIES.map((category) => (
+                <motion.button
+                  key={category.name}
+                  whileHover={{ scale: 1.02, x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center w-full py-2 px-4 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                >
+                  <category.icon size={16} className="mr-3" />
+                  <span>{category.name}</span>
+                </motion.button>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
         </ul>
       </nav>
       
+      {/* Settings at the bottom */}
       <div className="p-4 border-t border-white/10 text-xs text-gray-500">
+        <motion.button 
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate('/settings')}
+          className="flex items-center w-full py-2 px-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+        >
+          <Settings size={20} />
+          {!isCollapsed && <span className="ml-4 font-medium">Settings</span>}
+        </motion.button>
+        
         <AnimatePresence initial={false}>
           {!isCollapsed && (
             <motion.div
@@ -237,8 +325,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.2 }}
+              className="mt-4 text-center"
             >
-              <p>VueTube v1.0</p>
+              <p>Made with ❤️ by cx051</p>
             </motion.div>
           )}
         </AnimatePresence>

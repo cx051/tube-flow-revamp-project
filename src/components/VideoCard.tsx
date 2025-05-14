@@ -1,29 +1,16 @@
 
 import React from 'react';
-import { YouTubeSearchResult } from '@/services/youtubeApi';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { UnifiedVideo } from '@/services/apiService';
+import { formatViewCount, formatDuration } from '@/services/invidiousApi';
 
 interface VideoCardProps {
-  video: YouTubeSearchResult;
+  video: UnifiedVideo;
 }
 
 const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
-  const { snippet, id, statistics } = video;
   const navigate = useNavigate();
-  
-  // Format view count
-  const formatViewCount = (count?: string) => {
-    if (!count) return '';
-    
-    const num = parseInt(count, 10);
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M views`;
-    } else if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K views`;
-    }
-    return `${num} views`;
-  };
   
   // Format publish date
   const formatPublishDate = (publishedAt: string) => {
@@ -41,9 +28,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
   };
   
   const handleClick = () => {
-    if (id.videoId) {
-      navigate(`/video/${id.videoId}`);
+    navigate(`/video/${video.id}`);
+  };
+  
+  // Format views based on the type
+  const getFormattedViews = () => {
+    if (typeof video.viewCount === 'number') {
+      return formatViewCount(video.viewCount);
+    } else if (typeof video.viewCount === 'string') {
+      return `${video.viewCount} views`;
     }
+    return '';
   };
   
   return (
@@ -61,10 +56,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
       >
         <div className="relative aspect-video">
           <img 
-            src={snippet.thumbnails.high.url} 
-            alt={snippet.title}
+            src={video.thumbnailUrl} 
+            alt={video.title}
             className="w-full h-full object-cover"
           />
+          
+          {video.duration && (
+            <div className="absolute bottom-2 right-2 bg-black/80 px-1.5 py-0.5 text-xs rounded">
+              {video.duration}
+            </div>
+          )}
+          
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-3">
             <div className="w-12 h-12 rounded-full bg-red-600/80 flex items-center justify-center">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,17 +78,17 @@ const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
         </div>
         
         <div className="p-4">
-          <h3 className="font-medium line-clamp-2 mb-2 text-white">{snippet.title}</h3>
+          <h3 className="font-medium line-clamp-2 mb-2 text-white">{video.title}</h3>
           
           <div className="flex items-center text-gray-400 text-sm mb-2">
             <p className="hover:text-red-400 transition-colors">
-              {snippet.channelTitle}
+              {video.channelTitle}
             </p>
           </div>
           
           <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{statistics && formatViewCount(statistics.viewCount)}</span>
-            <span>{formatPublishDate(snippet.publishedAt)}</span>
+            <span>{getFormattedViews()}</span>
+            <span>{formatPublishDate(video.publishedAt)}</span>
           </div>
         </div>
       </div>

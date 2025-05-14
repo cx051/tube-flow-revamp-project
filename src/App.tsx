@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import VideoPlayer from "./pages/VideoPlayer";
+import WindowControls from "./components/WindowControls";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +17,9 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <div className="fixed top-2 left-4 z-50">
+        <WindowControls />
+      </div>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
