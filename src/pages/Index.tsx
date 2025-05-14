@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/components/ui/sonner';
@@ -11,6 +10,7 @@ import VideoCard from '@/components/VideoCard';
 import SplashScreen from '@/components/SplashScreen';
 import { Loader2, Settings as SettingsIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { UnifiedVideo } from '@/services/apiService';
 
 const Index = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -84,7 +84,21 @@ const Index = () => {
   };
   
   // Get cached video data if not loading and no data from query
-  const videos: YouTubeSearchResult[] = data || (isLoading ? [] : getVideoData() || []);
+  const youtubeVideos: YouTubeSearchResult[] = data || (isLoading ? [] : getVideoData() || []);
+  
+  // Transform YouTubeSearchResult to UnifiedVideo
+  const videos: UnifiedVideo[] = youtubeVideos.map(video => ({
+    id: video.id.videoId || video.id.toString(),
+    title: video.snippet.title,
+    description: video.snippet.description,
+    channelTitle: video.snippet.channelTitle,
+    channelId: video.snippet.channelId,
+    publishedAt: video.snippet.publishedAt,
+    viewCount: video.statistics?.viewCount || "0",
+    likeCount: video.statistics?.likeCount || "0",
+    thumbnailUrl: video.snippet.thumbnails.high.url,
+    source: 'youtube'
+  }));
 
   // Show no API key message if needed
   const showNoApiKeyMessage = !apiKey && !isLoading && !showSplash;
@@ -232,7 +246,7 @@ const Index = () => {
                       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
                     >
                       {videos.map((video, index) => (
-                        <motion.div key={video.id.videoId || index} variants={itemVariants}>
+                        <motion.div key={video.id || index} variants={itemVariants}>
                           <VideoCard video={video} />
                         </motion.div>
                       ))}
