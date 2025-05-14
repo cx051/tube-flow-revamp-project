@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/sonner";
 
 // YouTube API types
@@ -23,6 +22,12 @@ export interface YouTubeSearchResult {
     };
     channelTitle: string;
     liveBroadcastContent: string;
+  };
+  statistics?: {
+    viewCount: string;
+    likeCount: string;
+    favoriteCount: string;
+    commentCount: string;
   };
 }
 
@@ -124,7 +129,7 @@ export async function fetchYouTubeData(
       throw new Error("Search query is required");
     }
     
-    // NOTE: Fixed the duplicate part parameter and removed statistics from search request
+    // Fix the duplicate part parameter issue by removing statistics from search request
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?key=${apiKey}&part=snippet&maxResults=${maxResults}&regionCode=${regionCode}&q=${encodeURIComponent(searchQuery)}&type=video`;
     
     const response = await fetch(searchUrl);
