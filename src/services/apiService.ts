@@ -6,7 +6,12 @@ import {
   getTrendingVideos, 
   getVideoDetails,
   InvidiousVideo,
-  InvidiousSearchResult 
+  InvidiousSearchResult,
+  getCurrentInstance,
+  checkInvidiousStatus,
+  fetchWithFallback,
+  formatDuration,
+  formatViewCount
 } from "./invidiousApi";
 import { toast } from "@/components/ui/sonner";
 
@@ -25,10 +30,18 @@ export interface UnifiedVideo {
   source: 'youtube' | 'invidious';
 }
 
+// Filter options interface
+export interface FilterOptions {
+  sort?: string;
+  date?: string;
+  duration?: string;
+  type?: string;
+}
+
 // API Type
 export type ApiType = 'youtube' | 'invidious';
 
-// Get stored API preference
+// Get stored API preference (defaulting to invidious)
 export const getApiPreference = (): ApiType => {
   const preference = localStorage.getItem('apiPreference');
   return (preference === 'youtube' ? 'youtube' : 'invidious') as ApiType;
@@ -72,26 +85,46 @@ const convertInvidiousToUnified = (videos: InvidiousVideo[]): UnifiedVideo[] => 
   }));
 };
 
-// Format duration
-const formatDuration = (seconds: number): string => {
-  if (!seconds) return "0:00";
-  
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
-  
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+// Check if Invidious is available 
+export const checkApiAvailability = async (): Promise<ApiType> => {
+  try {
+    // Check if Invidious is available by fetching a random trending video
+    const isInvidiousAvailable = await checkInvidiousStatus();
+    
+    if (isInvidiousAvailable) {
+      return 'invidious';
+    } else {
+      // If Invidious is not available, check if YouTube API key is set
+      const apiKey = getApiKey();
+      if (apiKey) {
+        return 'youtube';
+      } else {
+        // If neither is available, default to Invidious anyway
+        return 'invidious';
+      }
+    }
+  } catch (error) {
+    console.error('API availability check error:', error);
+    return 'invidious'; // Default to Invidious even if check fails
   }
-  
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
+// Get stream URL based on video ID and source
+export const getStreamUrl = (videoId: string, source: ApiType = 'invidious'): string => {
+  if (source === 'invidious') {
+    const instance = getCurrentInstance();
+    return `${instance}/watch?v=${videoId}`;
+  } else {
+    return `https://www.youtube.com/watch?v=${videoId}`;
+  }
 };
 
 // Search videos using the preferred API
 export const searchVideos = async (
   query: string, 
   maxResults: number = 20, 
-  regionCode: string = "US"
+  regionCode: string = "US",
+  filters?: FilterOptions
 ): Promise<UnifiedVideo[]> => {
   const apiPreference = getApiPreference();
   
@@ -99,15 +132,15 @@ export const searchVideos = async (
     if (apiPreference === 'youtube') {
       const apiKey = getApiKey();
       if (!apiKey) {
-        toast.error("YouTube API key is required for YouTube search");
-        throw new Error("YouTube API key is required");
+        toast.error("Switching to Invidious as YouTube API key is missing");
+        setApiPreference('invidious');
+        return searchWithInvidious(query, filters);
       }
       
       const results = await fetchYouTubeData(apiKey, query, maxResults, regionCode);
       return convertYouTubeToUnified(results);
     } else {
-      const results = await searchInvidious(query);
-      return results.videos ? convertInvidiousToUnified(results.videos) : [];
+      return searchWithInvidious(query, filters);
     }
   } catch (error) {
     console.error("Search error:", error);
@@ -115,8 +148,8 @@ export const searchVideos = async (
     // If primary API fails, try the other one
     if (apiPreference === 'youtube') {
       try {
-        const results = await searchInvidious(query);
-        return results.videos ? convertInvidiousToUnified(results.videos) : [];
+        toast.warning("YouTube API failed, trying Invidious");
+        return searchWithInvidious(query, filters);
       } catch (fallbackError) {
         throw fallbackError;
       }
@@ -124,6 +157,7 @@ export const searchVideos = async (
       const apiKey = getApiKey();
       if (apiKey) {
         try {
+          toast.warning("Invidious API failed, trying YouTube");
           const results = await fetchYouTubeData(apiKey, query, maxResults, regionCode);
           return convertYouTubeToUnified(results);
         } catch (fallbackError) {
@@ -134,6 +168,23 @@ export const searchVideos = async (
     
     throw error;
   }
+};
+
+// Helper function for Invidious search with filters
+const searchWithInvidious = async (query: string, filters?: FilterOptions): Promise<UnifiedVideo[]> => {
+  // Build filter parameters
+  let filterParams = '';
+  
+  if (filters) {
+    if (filters.sort) filterParams += `&sort=${filters.sort}`;
+    if (filters.date) filterParams += `&date=${filters.date}`;
+    if (filters.duration) filterParams += `&duration=${filters.duration}`;
+    if (filters.type) filterParams += `&type=${filters.type}`;
+  }
+  
+  // Use the Invidious API with filters
+  const results = await searchInvidious(query, 1, filterParams);
+  return results.videos ? convertInvidiousToUnified(results.videos) : [];
 };
 
 // Get trending videos using the preferred API
@@ -147,8 +198,10 @@ export const getTrending = async (
     if (apiPreference === 'youtube') {
       const apiKey = getApiKey();
       if (!apiKey) {
-        toast.error("YouTube API key is required for trending videos");
-        throw new Error("YouTube API key is required");
+        toast.warning("Switching to Invidious as YouTube API key is missing");
+        setApiPreference('invidious');
+        const results = await getTrendingVideos(regionCode);
+        return convertInvidiousToUnified(results);
       }
       
       const results = await fetchYouTubeData(apiKey, undefined, maxResults, regionCode, true);
@@ -163,6 +216,7 @@ export const getTrending = async (
     // If primary API fails, try the other one
     if (apiPreference === 'youtube') {
       try {
+        toast.warning("YouTube API failed, trying Invidious");
         const results = await getTrendingVideos(regionCode);
         return convertInvidiousToUnified(results);
       } catch (fallbackError) {
@@ -172,6 +226,7 @@ export const getTrending = async (
       const apiKey = getApiKey();
       if (apiKey) {
         try {
+          toast.warning("Invidious API failed, trying YouTube");
           const results = await fetchYouTubeData(apiKey, undefined, maxResults, regionCode, true);
           return convertYouTubeToUnified(results);
         } catch (fallbackError) {
@@ -192,7 +247,9 @@ export const getVideoInfo = async (videoId: string): Promise<any> => {
     if (apiPreference === 'youtube') {
       const apiKey = getApiKey();
       if (!apiKey) {
-        throw new Error("YouTube API key is required");
+        toast.warning("Switching to Invidious as YouTube API key is missing");
+        setApiPreference('invidious');
+        return getInvidiousVideoInfo(videoId);
       }
       
       // For YouTube, we need to make a specific API call
@@ -207,7 +264,7 @@ export const getVideoInfo = async (videoId: string): Promise<any> => {
       const data = await response.json();
       return data.items[0];
     } else {
-      return await getVideoDetails(videoId);
+      return getInvidiousVideoInfo(videoId);
     }
   } catch (error) {
     console.error("Video details error:", error);
@@ -215,7 +272,8 @@ export const getVideoInfo = async (videoId: string): Promise<any> => {
     // If primary API fails, try the other one
     if (apiPreference === 'youtube') {
       try {
-        return await getVideoDetails(videoId);
+        toast.warning("YouTube API failed, trying Invidious");
+        return getInvidiousVideoInfo(videoId);
       } catch (fallbackError) {
         throw fallbackError;
       }
@@ -223,6 +281,7 @@ export const getVideoInfo = async (videoId: string): Promise<any> => {
       const apiKey = getApiKey();
       if (apiKey) {
         try {
+          toast.warning("Invidious API failed, trying YouTube");
           const response = await fetch(
             `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${videoId}&part=snippet,statistics,contentDetails`
           );
@@ -239,6 +298,17 @@ export const getVideoInfo = async (videoId: string): Promise<any> => {
       }
     }
     
+    throw error;
+  }
+};
+
+// Helper function to handle Invidious video info retrieval
+const getInvidiousVideoInfo = async (videoId: string) => {
+  try {
+    const videoDetails = await getVideoDetails(videoId);
+    return videoDetails;
+  } catch (error) {
+    console.error("Invidious video details error:", error);
     throw error;
   }
 };

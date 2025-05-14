@@ -3,19 +3,24 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, Settings, X } from 'lucide-react';
 import { addSearchToHistory, getSearchHistory } from '@/services/storageService';
 import { motion, AnimatePresence } from 'framer-motion';
+import FilterButton from './FilterButton';
+import { FilterOptions } from '@/services/apiService';
 
 interface SearchBarProps {
-  onSearch: (query: string) => void;
+  onSearch: (query: string, filters?: FilterOptions) => void;
   onSettingsOpen: () => void;
+  showFilters?: boolean;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
   onSearch,
-  onSettingsOpen
+  onSettingsOpen,
+  showFilters = false
 }) => {
   const [query, setQuery] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [filters, setFilters] = useState<FilterOptions>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   
@@ -38,7 +43,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   
   const handleSearch = () => {
     if (query.trim()) {
-      onSearch(query.trim());
+      onSearch(query.trim(), filters);
       addSearchToHistory(query.trim());
       setSearchHistory(getSearchHistory());
       setShowHistory(false);
@@ -53,8 +58,15 @@ const SearchBar: React.FC<SearchBarProps> = ({
   
   const handleHistoryItemClick = (item: string) => {
     setQuery(item);
-    onSearch(item);
+    onSearch(item, filters);
     setShowHistory(false);
+  };
+  
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    setFilters(newFilters);
+    if (query.trim()) {
+      onSearch(query.trim(), newFilters);
+    }
   };
   
   const clearSearch = () => {
@@ -69,46 +81,55 @@ const SearchBar: React.FC<SearchBarProps> = ({
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="relative w-full max-w-3xl mx-auto"
     >
-      <motion.div 
-        className="relative flex items-center bg-secondary rounded-full overflow-hidden shadow-lg neo-blur focus-within:ring-2 focus-within:ring-red-500/50 transition-all"
-        whileHover={{ boxShadow: "0 0 0 1px rgba(220, 38, 38, 0.1), 0 8px 20px rgba(0, 0, 0, 0.3)" }}
-      >
-        <div className="pl-5 pr-2 text-gray-400">
-          <Search size={20} />
-        </div>
-        
-        <input 
-          ref={inputRef} 
-          type="text" 
-          value={query} 
-          onChange={e => setQuery(e.target.value)} 
-          onKeyDown={handleKeyDown} 
-          onFocus={() => setShowHistory(true)} 
-          placeholder="Search videos..." 
-          className="py-3 px-2 bg-transparent w-full text-white outline-none placeholder-gray-500" 
-        />
-        
-        {query && (
-          <motion.button 
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-            onClick={clearSearch} 
-            className="mx-1 p-1 rounded-full hover:bg-white/10 text-gray-400"
-          >
-            <X size={16} />
-          </motion.button>
-        )}
-        
-        <motion.button 
-          whileHover={{ backgroundColor: "rgba(220, 38, 38, 0.9)" }}
-          whileTap={{ scale: 0.97 }}
-          onClick={handleSearch} 
-          className="bg-red-600 hover:bg-red-700 text-white py-3 px-6 transition-colors rounded-r-full"
+      <div className="flex items-center gap-3">
+        <motion.div 
+          className="relative flex items-center flex-1 bg-secondary rounded-full overflow-hidden shadow-lg neo-blur focus-within:ring-2 focus-within:ring-red-500/50 transition-all"
+          whileHover={{ boxShadow: "0 0 0 1px rgba(220, 38, 38, 0.1), 0 8px 20px rgba(0, 0, 0, 0.3)" }}
         >
-          Search
-        </motion.button>
-      </motion.div>
+          <div className="pl-5 pr-2 text-gray-400">
+            <Search size={20} />
+          </div>
+          
+          <input 
+            ref={inputRef} 
+            type="text" 
+            value={query} 
+            onChange={e => setQuery(e.target.value)} 
+            onKeyDown={handleKeyDown} 
+            onFocus={() => setShowHistory(true)} 
+            placeholder="Search videos..." 
+            className="py-3 px-2 bg-transparent w-full text-white outline-none placeholder-gray-500" 
+          />
+          
+          {query && (
+            <motion.button 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              onClick={clearSearch} 
+              className="mx-1 p-1 rounded-full hover:bg-white/10 text-gray-400"
+            >
+              <X size={16} />
+            </motion.button>
+          )}
+          
+          <motion.button 
+            whileHover={{ backgroundColor: "rgba(220, 38, 38, 0.9)" }}
+            whileTap={{ scale: 0.97 }}
+            onClick={handleSearch} 
+            className="bg-red-600 hover:bg-red-700 text-white py-3 px-6 transition-colors rounded-r-full"
+          >
+            Search
+          </motion.button>
+        </motion.div>
+
+        {/* Filter button */}
+        <FilterButton 
+          isVisible={showFilters} 
+          onFilterChange={handleFilterChange} 
+          currentFilters={filters} 
+        />
+      </div>
       
       <AnimatePresence>
         {showHistory && searchHistory.length > 0 && (

@@ -1,16 +1,24 @@
+
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/components/ui/sonner';
 import { useNavigate } from 'react-router-dom';
-import { fetchYouTubeData, YouTubeSearchResult } from '@/services/youtubeApi';
-import { getApiKey, getSettings, storeVideoData, getVideoData } from '@/services/storageService';
+import { getApiKey, getSettings, storeVideoData } from '@/services/storageService';
 import Sidebar from '@/components/Sidebar';
 import SearchBar from '@/components/SearchBar';
 import VideoCard from '@/components/VideoCard';
 import SplashScreen from '@/components/SplashScreen';
-import { Loader2, Settings as SettingsIcon } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UnifiedVideo } from '@/services/apiService';
+import { 
+  UnifiedVideo, 
+  searchVideos, 
+  getTrending, 
+  getApiPreference, 
+  setApiPreference,
+  FilterOptions
+} from '@/services/apiService';
+import { checkInvidiousStatus } from '@/services/invidiousApi';
 
 const Index = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -18,41 +26,61 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<string>('home');
   const [settings, setSettings] = useState(getSettings());
   const [showSplash, setShowSplash] = useState(true);
+  const [apiType, setApiType] = useState(getApiPreference());
+  const [filters, setFilters] = useState<FilterOptions>({});
   const navigate = useNavigate();
   
-  // Fetch stored data on initial load
+  // Check if Invidious is available and set as default on initial load
   useEffect(() => {
-    const storedApiKey = getApiKey();
-    const storedSettings = getSettings();
+    const checkApiStatus = async () => {
+      try {
+        const isInvidiousAvailable = await checkInvidiousStatus();
+        
+        if (isInvidiousAvailable) {
+          setApiPreference('invidious');
+          setApiType('invidious');
+        } else {
+          const storedApiKey = getApiKey();
+          if (storedApiKey) {
+            setApiPreference('youtube');
+            setApiType('youtube');
+          } else {
+            // If both are unavailable, still try with Invidious as it's the default preference
+            setApiPreference('invidious');
+            setApiType('invidious');
+          }
+        }
+      } catch (error) {
+        console.error("API status check error:", error);
+      }
+    };
     
+    checkApiStatus();
+    
+    // Also load API key for YouTube (as fallback)
+    const storedApiKey = getApiKey();
     setApiKey(storedApiKey);
+    
+    const storedSettings = getSettings();
     setSettings(storedSettings);
   }, []);
   
   // Determine whether to fetch trending or search results
   const isTrending = activeTab === 'trending';
   
-  // Query for YouTube data
+  // Query for data (either YouTube or Invidious)
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['youtubeData', searchQuery, isTrending, settings.regionCode, settings.maxResults, apiKey],
+    queryKey: ['videoData', searchQuery, isTrending, settings.regionCode, settings.maxResults, apiType, filters],
     queryFn: async () => {
-      if (!apiKey) {
-        throw new Error('YouTube API key is required');
+      if (isTrending) {
+        return await getTrending(settings.maxResults, settings.regionCode);
+      } else if (searchQuery) {
+        return await searchVideos(searchQuery, settings.maxResults, settings.regionCode, filters);
+      } else {
+        return await getTrending(settings.maxResults, settings.regionCode);
       }
-      
-      const results = await fetchYouTubeData(
-        apiKey,
-        isTrending ? undefined : searchQuery || undefined,
-        settings.maxResults,
-        settings.regionCode,
-        isTrending
-      );
-      
-      // Cache the results
-      storeVideoData(results);
-      return results;
     },
-    enabled: !!apiKey && (!!searchQuery || isTrending) && !showSplash,
+    enabled: !showSplash,
     refetchOnWindowFocus: false
   });
   
@@ -73,8 +101,11 @@ const Index = () => {
   };
   
   // Handle search
-  const handleSearch = (query: string) => {
+  const handleSearch = (query: string, newFilters?: FilterOptions) => {
     setSearchQuery(query);
+    if (newFilters) {
+      setFilters(newFilters);
+    }
     setActiveTab('search');
   };
   
@@ -83,25 +114,8 @@ const Index = () => {
     navigate('/settings');
   };
   
-  // Get cached video data if not loading and no data from query
-  const youtubeVideos: YouTubeSearchResult[] = data || (isLoading ? [] : getVideoData() || []);
-  
-  // Transform YouTubeSearchResult to UnifiedVideo
-  const videos: UnifiedVideo[] = youtubeVideos.map(video => ({
-    id: video.id.videoId || video.id.toString(),
-    title: video.snippet.title,
-    description: video.snippet.description,
-    channelTitle: video.snippet.channelTitle,
-    channelId: video.snippet.channelId,
-    publishedAt: video.snippet.publishedAt,
-    viewCount: video.statistics?.viewCount || "0",
-    likeCount: video.statistics?.likeCount || "0",
-    thumbnailUrl: video.snippet.thumbnails.high.url,
-    source: 'youtube'
-  }));
-
-  // Show no API key message if needed
-  const showNoApiKeyMessage = !apiKey && !isLoading && !showSplash;
+  // Show API key needed message only if YouTube is selected and no key is present
+  const showNoApiKeyMessage = apiType === 'youtube' && !apiKey && !isLoading && !showSplash;
 
   // Container variants for staggered animations
   const containerVariants = {
@@ -127,6 +141,9 @@ const Index = () => {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
   
+  // Invidious videos or empty array as fallback
+  const videos: UnifiedVideo[] = data || [];
+  
   return (
     <div className="flex h-screen overflow-hidden bg-background text-white">
       {/* Sidebar */}
@@ -146,7 +163,8 @@ const Index = () => {
           <header className="p-6">
             <SearchBar 
               onSearch={handleSearch} 
-              onSettingsOpen={handleSettingsOpen} 
+              onSettingsOpen={handleSettingsOpen}
+              showFilters={searchQuery.length > 0} 
             />
           </header>
           
@@ -165,7 +183,8 @@ const Index = () => {
                   <div className="glass-morphism p-8 rounded-2xl shadow-lg max-w-md">
                     <h2 className="text-2xl font-bold mb-4 text-gradient-red">YouTube API Key Required</h2>
                     <p className="text-gray-400 mb-6">
-                      To use this application, you need to provide a valid YouTube API key in the settings.
+                      YouTube API is currently selected but no API key is provided.
+                      Add a key in settings or switch to Invidious.
                     </p>
                     <motion.button
                       whileHover={{ scale: 1.03 }}

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { 
-  Home, Search, TrendingUp, Settings, ChevronLeft, ChevronRight, 
+  Home, TrendingUp, Settings, ChevronLeft, ChevronRight, 
   ChevronDown, ChevronUp, Film, Music, Gamepad2, Newspaper, 
   Tv2, Milestone, BookOpen, Baby, Camera
 } from 'lucide-react';
@@ -79,12 +79,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
       action: () => {}
     },
     {
-      name: 'search',
-      icon: Search,
-      path: '/',
-      action: () => {}
-    },
-    {
       name: 'trending',
       icon: TrendingUp,
       path: '/',
@@ -156,12 +150,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
     >
       <div className="flex flex-col p-4 border-b border-white/10">
         <div className="flex items-center justify-center mb-2">
-          <motion.h1
-            className="text-xl font-bold text-white flex items-center space-x-1"
-          >
-            <span className="text-red-600">Vue</span>
-            <span>Tube</span>
-          </motion.h1>
+          {isCollapsed ? (
+            <motion.h1 className="text-xl font-bold text-white">
+              <span className="text-red-600">V</span>
+              <span>T</span>
+            </motion.h1>
+          ) : (
+            <motion.h1 className="text-xl font-bold text-white flex items-center space-x-1">
+              <span className="text-red-600">Vue</span>
+              <span>Tube</span>
+            </motion.h1>
+          )}
         </div>
         
         <motion.button

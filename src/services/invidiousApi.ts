@@ -75,6 +75,32 @@ export interface InvidiousVideoDetails extends InvidiousVideo {
   likeCount: number;
   dislikeCount: number;
   recommendedVideos: InvidiousVideo[];
+  formatStreams?: {
+    url: string;
+    itag: string;
+    type: string;
+    quality: string;
+    container: string;
+    encoding: string;
+    qualityLabel: string;
+    resolution: string;
+    size: string;
+  }[];
+  adaptiveFormats?: {
+    index: string;
+    bitrate: string;
+    init: string;
+    url: string;
+    itag: string;
+    type: string;
+    clen: string;
+    quality: string;
+    fps?: number;
+    container: string;
+    encoding: string;
+    qualityLabel?: string;
+    resolution?: string;
+  }[];
 }
 
 // Store current instance
@@ -130,6 +156,21 @@ export const refreshInstance = () => {
   return currentInstance;
 };
 
+// Ping the instance with a test video to check if it's working
+export const pingInstance = async (instance: string = currentInstance, testVideoId: string = 'dQw4w9WgXcQ'): Promise<boolean> => {
+  try {
+    const response = await fetch(`${instance}/api/v1/videos/${testVideoId}?fields=videoId`);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}`);
+    }
+    const data = await response.json();
+    return !!data.videoId;
+  } catch (error) {
+    console.error(`Ping failed for instance ${instance}:`, error);
+    return false;
+  }
+};
+
 // Fetch data with automatic fallback to other instances
 export const fetchWithFallback = async (endpoint: string) => {
   let attempts = 0;
@@ -155,6 +196,7 @@ export const fetchWithFallback = async (endpoint: string) => {
       
       // If failed, try another instance
       if (attempts < maxAttempts) {
+        toast.warning(`Switching to another Invidious instance`);
         refreshInstance();
       }
     }
@@ -165,10 +207,15 @@ export const fetchWithFallback = async (endpoint: string) => {
   throw new Error("Failed to connect to any Invidious instance");
 };
 
-// Search for videos and channels
-export const searchInvidious = async (query: string, page: number = 1): Promise<InvidiousSearchResult> => {
+// Search for videos and channels with filter options
+export const searchInvidious = async (
+  query: string, 
+  page: number = 1,
+  filterParams: string = ""
+): Promise<InvidiousSearchResult> => {
   try {
-    const results = await fetchWithFallback(`/api/v1/search?q=${encodeURIComponent(query)}&page=${page}`);
+    const endpoint = `/api/v1/search?q=${encodeURIComponent(query)}&page=${page}${filterParams}`;
+    const results = await fetchWithFallback(endpoint);
     
     const videos = results.filter((item: any) => item.type === "video") as InvidiousVideo[];
     const channels = results.filter((item: any) => item.type === "channel") as InvidiousChannel[];
@@ -203,6 +250,31 @@ export const getVideoDetails = async (videoId: string): Promise<InvidiousVideoDe
   } catch (error) {
     console.error("Video details error:", error);
     throw error;
+  }
+};
+
+// Get direct stream URL for a video
+export const getStreamUrl = async (videoId: string): Promise<string | null> => {
+  try {
+    const videoDetails = await getVideoDetails(videoId);
+    
+    // Try to get the best quality stream URL
+    if (videoDetails.formatStreams && videoDetails.formatStreams.length > 0) {
+      // Sort by quality (higher resolution first)
+      const sortedStreams = [...videoDetails.formatStreams].sort((a, b) => {
+        const resA = parseInt(a.resolution?.split('p')[0] || '0', 10);
+        const resB = parseInt(b.resolution?.split('p')[0] || '0', 10);
+        return resB - resA;
+      });
+      
+      return sortedStreams[0].url;
+    }
+    
+    // If no format streams, create a direct watch URL
+    return `${currentInstance}/watch?v=${videoId}`;
+  } catch (error) {
+    console.error("Failed to get stream URL:", error);
+    return null;
   }
 };
 
@@ -247,10 +319,32 @@ export const formatViewCount = (count: number): string => {
 
 // Check if Invidious is available
 export const checkInvidiousStatus = async (): Promise<boolean> => {
+  if (!currentInstance) {
+    initializeInstance();
+  }
+  
   try {
-    await fetchWithFallback('/api/v1/stats');
+    // Try to ping the current instance
+    const isPingSuccessful = await pingInstance(currentInstance);
+    
+    if (!isPingSuccessful) {
+      // If the current instance is not available, try to find a working one
+      for (const instance of PUBLIC_INSTANCES) {
+        if (instance !== currentInstance) {
+          const isAvailable = await pingInstance(instance);
+          if (isAvailable) {
+            // Set the working instance as the current one
+            setInstance(instance);
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+    
     return true;
   } catch (error) {
+    console.error("Error checking Invidious status:", error);
     return false;
   }
 };
