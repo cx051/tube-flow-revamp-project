@@ -68,9 +68,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           Search
         </button>
         
-        <button onClick={onSettingsOpen} className="p-3 text-gray-400 hover:bg-gray-700 transition-colors">
-          
-        </button>
+        
       </div>
       
       <AnimatedTransition show={showHistory && searchHistory.length > 0} type="fade" direction="down">
