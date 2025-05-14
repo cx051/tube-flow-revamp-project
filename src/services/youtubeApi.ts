@@ -38,6 +38,7 @@ export interface YouTubeSearchResult {
   viewCount?: string;
   likeCount?: string;
   thumbnailUrl?: string;
+  source?: 'youtube' | 'invidious'; // Added source property
 }
 
 export interface YouTubeVideoDetails {
@@ -140,6 +141,7 @@ export async function fetchYouTubeData(
         viewCount: item.statistics?.viewCount || "0",
         likeCount: item.statistics?.likeCount || "0",
         thumbnailUrl: item.snippet.thumbnails?.high?.url || "",
+        source: 'youtube' // Added source property
       }));
     }
     
@@ -203,7 +205,8 @@ export async function fetchYouTubeData(
               publishedAt: item.snippet.publishedAt,
               viewCount: videoDetails.statistics?.viewCount || "0",
               likeCount: videoDetails.statistics?.likeCount || "0",
-              thumbnailUrl: item.snippet.thumbnails?.high?.url || ""
+              thumbnailUrl: item.snippet.thumbnails?.high?.url || "",
+              source: 'youtube' // Added source property
             };
           }
           
@@ -217,7 +220,8 @@ export async function fetchYouTubeData(
             publishedAt: item.snippet.publishedAt,
             viewCount: "0",
             likeCount: "0",
-            thumbnailUrl: item.snippet.thumbnails?.high?.url || ""
+            thumbnailUrl: item.snippet.thumbnails?.high?.url || "",
+            source: 'youtube' // Added source property
           };
         });
       } catch (statisticsError) {

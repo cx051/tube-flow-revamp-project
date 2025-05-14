@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -42,7 +41,6 @@ const VideoPlayer = () => {
   const [apiSource] = useState(getApiPreference());
   const settings = getSettings();
   
-  // Quality options
   const qualityOptions = [
     { label: 'Auto', value: 'auto' },
     { label: '2160p (4K)', value: '2160p' },
@@ -55,10 +53,8 @@ const VideoPlayer = () => {
     { label: '144p', value: '144p' },
   ];
 
-  // Playback rates
   const playbackRates = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   
-  // Fetch video details
   const { data: videoDetails, isLoading, error } = useQuery({
     queryKey: ['videoDetails', videoId, apiSource],
     queryFn: async () => {
@@ -69,7 +65,6 @@ const VideoPlayer = () => {
     }
   });
 
-  // Fetch related videos
   const { data: relatedVideos, isLoading: relatedLoading } = useQuery({
     queryKey: ['relatedVideos', videoId, apiSource],
     queryFn: async () => {
@@ -77,18 +72,11 @@ const VideoPlayer = () => {
         throw new Error('Video ID missing');
       }
       
-      // For YouTube API source
       if (apiSource === 'youtube') {
-        // This uses the YouTube API to get related videos
         const videoData = videoDetails;
         if (!videoData) return [];
-        
-        // In a real-world scenario, we'd fetch related videos from the YouTube API
         return videoData.recommendedVideos || [];
-      } 
-      // For Invidious API source
-      else {
-        // Invidious video details include recommended videos
+      } else {
         return videoDetails?.recommendedVideos || [];
       }
     },
@@ -200,7 +188,6 @@ const VideoPlayer = () => {
     };
   }, [videoRef.current]);
   
-  // Check fullscreen state changes
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -213,7 +200,6 @@ const VideoPlayer = () => {
     };
   }, []);
 
-  // Auto-hide controls after 3 seconds of inactivity
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     
@@ -300,8 +286,6 @@ const VideoPlayer = () => {
   };
   
   const handleQualityChange = (quality: string) => {
-    // In a real implementation, you would change the video source
-    // to the appropriate quality stream here
     setActiveQuality(quality);
     setShowQualitySettings(false);
     setShowSettings(false);
@@ -324,7 +308,6 @@ const VideoPlayer = () => {
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
-  // Volume icon based on current volume
   const getVolumeIcon = () => {
     if (isMuted || volume === 0) {
       return <VolumeX size={20} />;
@@ -335,7 +318,6 @@ const VideoPlayer = () => {
     }
   };
 
-  // Format publish date
   const formatPublishDate = (publishedAt?: string | number) => {
     if (!publishedAt) return '';
     
@@ -358,7 +340,6 @@ const VideoPlayer = () => {
     return `${Math.floor(diffDays / 365)} years ago`;
   };
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -397,7 +378,6 @@ const VideoPlayer = () => {
     }
   };
 
-  // Extract data based on API source
   const getVideoData = () => {
     if (!videoDetails) return null;
     
@@ -466,10 +446,8 @@ const VideoPlayer = () => {
 
   return (
     <div className="min-h-screen flex bg-black text-white">
-      {/* Sidebar */}
       <Sidebar activeTab="home" onTabChange={(tab) => navigate('/')} />
       
-      {/* Main content */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         <motion.div 
           className="relative z-10 w-full h-full overflow-y-auto scrollbar-none"
@@ -478,7 +456,6 @@ const VideoPlayer = () => {
           transition={{ duration: 0.3 }}
         >
           <div className={`flex ${isTheaterMode ? 'flex-col' : 'flex-col lg:flex-row'} w-full`}>
-            {/* Video section */}
             <div 
               ref={videoContainerRef}
               className={`relative ${
@@ -489,7 +466,6 @@ const VideoPlayer = () => {
             >
               {videoId && (
                 <div className="w-full h-full relative">
-                  {/* Video iframe */}
                   {apiSource === 'youtube' ? (
                     <iframe 
                       src={`https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=${window.location.origin}&rel=0`}
@@ -506,7 +482,6 @@ const VideoPlayer = () => {
                     ></iframe>
                   )}
                   
-                  {/* Video overlay controls */}
                   <AnimatePresence>
                     {showControls && (
                       <motion.div 
@@ -520,7 +495,6 @@ const VideoPlayer = () => {
                           togglePlay();
                         }}
                       >
-                        {/* Top controls - Back button */}
                         <div 
                           className="absolute top-0 left-0 p-4"
                           onClick={(e) => e.stopPropagation()}
@@ -535,7 +509,6 @@ const VideoPlayer = () => {
                           </motion.button>
                         </div>
                         
-                        {/* Centered play/pause button */}
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                           <motion.button
                             initial={{ opacity: 0, scale: 0.5 }}
@@ -547,12 +520,10 @@ const VideoPlayer = () => {
                           </motion.button>
                         </div>
                         
-                        {/* Bottom controls */}
                         <div 
                           className="absolute bottom-0 left-0 right-0 p-4 flex flex-col"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {/* Progress bar */}
                           <div className="w-full mb-4">
                             <input
                               type="range"
@@ -571,10 +542,8 @@ const VideoPlayer = () => {
                             </div>
                           </div>
                           
-                          {/* Control buttons */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-4">
-                              {/* Play/Pause */}
                               <motion.button
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
@@ -584,7 +553,6 @@ const VideoPlayer = () => {
                                 {isPlaying ? <Pause size={24} /> : <Play size={24} />}
                               </motion.button>
                               
-                              {/* Volume */}
                               <div className="flex items-center space-x-2 group relative">
                                 <motion.button
                                   whileHover={{ scale: 1.1 }}
@@ -610,17 +578,15 @@ const VideoPlayer = () => {
                             </div>
                             
                             <div className="flex items-center space-x-3">
-                              {/* Theater mode */}
                               <motion.button
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
                                 onClick={toggleTheaterMode}
                                 className="p-2"
                               >
-                                <Theatre size={20} />
+                                <Theater size={20} />
                               </motion.button>
                               
-                              {/* Settings */}
                               <div className="relative">
                                 <motion.button
                                   whileHover={{ scale: 1.1 }}
@@ -635,7 +601,6 @@ const VideoPlayer = () => {
                                   <Settings size={20} className={showSettings ? "animate-spin-slow" : ""} />
                                 </motion.button>
                                 
-                                {/* Settings menu */}
                                 <AnimatePresence>
                                   {showSettings && (
                                     <motion.div
@@ -686,7 +651,6 @@ const VideoPlayer = () => {
                                   )}
                                 </AnimatePresence>
                                 
-                                {/* Quality submenu */}
                                 <AnimatePresence>
                                   {showQualitySettings && (
                                     <motion.div
@@ -726,7 +690,6 @@ const VideoPlayer = () => {
                                   )}
                                 </AnimatePresence>
                                 
-                                {/* Speed submenu */}
                                 <AnimatePresence>
                                   {showSpeedSettings && (
                                     <motion.div
@@ -767,7 +730,6 @@ const VideoPlayer = () => {
                                 </AnimatePresence>
                               </div>
                               
-                              {/* Fullscreen */}
                               <motion.button
                                 whileHover={{ scale: 1.1 }}
                                 whileTap={{ scale: 0.9 }}
@@ -786,7 +748,6 @@ const VideoPlayer = () => {
               )}
             </div>
             
-            {/* Related videos sidebar - only shown in non-theater mode */}
             {!isTheaterMode && (
               <div className="w-full lg:w-1/4 p-4 overflow-y-auto max-h-screen scrollbar-none">
                 <h3 className="text-lg font-bold mb-4">Related Videos</h3>
@@ -844,7 +805,6 @@ const VideoPlayer = () => {
             )}
           </div>
 
-          {/* Video info section */}
           <div className="p-6 max-w-5xl mx-auto">
             <motion.div 
               variants={containerVariants}
@@ -916,7 +876,6 @@ const VideoPlayer = () => {
                 </div>
               </motion.div>
               
-              {/* Description - collapsible */}
               <motion.div variants={itemVariants}>
                 <motion.button
                   onClick={() => setShowDescription(!showDescription)}
@@ -943,7 +902,6 @@ const VideoPlayer = () => {
                 </AnimatePresence>
               </motion.div>
               
-              {/* Related videos - shown in theater mode or on mobile */}
               {(isTheaterMode || window.innerWidth < 1024) && (
                 <motion.div variants={itemVariants}>
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -1003,7 +961,6 @@ const VideoPlayer = () => {
             </motion.div>
           </div>
           
-          {/* Footer */}
           <div className="text-center text-xs text-gray-500 p-4 border-t border-gray-800/40">
             Made with ❤️ by cx051
           </div>
