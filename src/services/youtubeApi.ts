@@ -1,3 +1,4 @@
+
 import { toast } from "@/components/ui/sonner";
 
 // YouTube API types
@@ -101,7 +102,7 @@ export async function fetchYouTubeData(
     
     // For trending videos
     if (isTrending) {
-      const trendingUrl = `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&chart=mostPopular&part=snippet&maxResults=${maxResults}&regionCode=${regionCode}`;
+      const trendingUrl = `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&chart=mostPopular&part=snippet,statistics&maxResults=${maxResults}&regionCode=${regionCode}`;
       
       const response = await fetch(trendingUrl);
       
@@ -120,7 +121,8 @@ export async function fetchYouTubeData(
           kind: "youtube#video", 
           videoId: item.id 
         },
-        snippet: item.snippet
+        snippet: item.snippet,
+        statistics: item.statistics
       }));
     }
     
@@ -148,38 +150,44 @@ export async function fetchYouTubeData(
       .join(",");
     
     if (videoIds) {
-      // Fetch additional video details including statistics
-      const videoDetailsUrl = `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${videoIds}&part=snippet,statistics`;
-      
-      const videoResponse = await fetch(videoDetailsUrl);
-      
-      if (!videoResponse.ok) {
-        // Just return search results if we can't get video details
-        return data.items;
-      }
-      
-      const videoData = await videoResponse.json();
-      
-      // Create a map of video details by ID for quick lookup
-      const videoDetailsMap = new Map();
-      videoData.items.forEach((item: YouTubeVideoDetails) => {
-        videoDetailsMap.set(item.id, item);
-      });
-      
-      // Enhance search results with statistics from video details
-      return data.items.map((item: YouTubeSearchResult) => {
-        const videoId = item.id.videoId;
-        const videoDetails = videoId ? videoDetailsMap.get(videoId) : null;
+      try {
+        // Fetch additional video details including statistics
+        const videoDetailsUrl = `https://www.googleapis.com/youtube/v3/videos?key=${apiKey}&id=${videoIds}&part=snippet,statistics`;
         
-        if (videoDetails) {
-          return {
-            ...item,
-            statistics: videoDetails.statistics
-          };
+        const videoResponse = await fetch(videoDetailsUrl);
+        
+        if (!videoResponse.ok) {
+          // Just return search results if we can't get video details
+          return data.items;
         }
         
-        return item;
-      });
+        const videoData = await videoResponse.json();
+        
+        // Create a map of video details by ID for quick lookup
+        const videoDetailsMap = new Map();
+        videoData.items.forEach((item: YouTubeVideoDetails) => {
+          videoDetailsMap.set(item.id, item);
+        });
+        
+        // Enhance search results with statistics from video details
+        return data.items.map((item: YouTubeSearchResult) => {
+          const videoId = item.id.videoId;
+          const videoDetails = videoId ? videoDetailsMap.get(videoId) : null;
+          
+          if (videoDetails) {
+            return {
+              ...item,
+              statistics: videoDetails.statistics
+            };
+          }
+          
+          return item;
+        });
+      } catch (statisticsError) {
+        console.error("Error fetching video statistics:", statisticsError);
+        // If statistics fetch fails, return original items
+        return data.items;
+      }
     }
     
     return data.items;

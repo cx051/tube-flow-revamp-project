@@ -2,23 +2,23 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/components/ui/sonner';
+import { useNavigate } from 'react-router-dom';
 import { fetchYouTubeData, YouTubeSearchResult } from '@/services/youtubeApi';
 import { getApiKey, getSettings, storeVideoData, getVideoData } from '@/services/storageService';
 import Sidebar from '@/components/Sidebar';
 import SearchBar from '@/components/SearchBar';
-import Settings from '@/components/Settings';
 import VideoCard from '@/components/VideoCard';
 import SplashScreen from '@/components/SplashScreen';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Settings as SettingsIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Index = () => {
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('home');
-  const [showSettings, setShowSettings] = useState<boolean>(false);
   const [settings, setSettings] = useState(getSettings());
   const [showSplash, setShowSplash] = useState(true);
+  const navigate = useNavigate();
   
   // Fetch stored data on initial load
   useEffect(() => {
@@ -66,6 +66,9 @@ const Index = () => {
     } else if (tab === 'search' && searchQuery) {
       // Refetch with current search query
       refetch();
+    } else if (tab === 'settings') {
+      // Navigate to settings page
+      navigate('/settings');
     }
   };
   
@@ -75,11 +78,9 @@ const Index = () => {
     setActiveTab('search');
   };
   
-  // Handle settings change
-  const handleSettingsChanged = () => {
-    setApiKey(getApiKey());
-    setSettings(getSettings());
-    refetch();
+  // Handle settings button click
+  const handleSettingsOpen = () => {
+    navigate('/settings');
   };
   
   // Get cached video data if not loading and no data from query
@@ -131,7 +132,7 @@ const Index = () => {
           <header className="p-6">
             <SearchBar 
               onSearch={handleSearch} 
-              onSettingsOpen={() => setShowSettings(true)} 
+              onSettingsOpen={handleSettingsOpen} 
             />
           </header>
           
@@ -155,7 +156,7 @@ const Index = () => {
                     <motion.button
                       whileHover={{ scale: 1.03 }}
                       whileTap={{ scale: 0.97 }}
-                      onClick={() => setShowSettings(true)}
+                      onClick={handleSettingsOpen}
                       className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-full transition-colors animate-pulse-glow"
                     >
                       Open Settings
@@ -243,13 +244,6 @@ const Index = () => {
           </main>
         </div>
       </div>
-      
-      {/* Settings modal */}
-      <Settings 
-        isOpen={showSettings} 
-        onClose={() => setShowSettings(false)} 
-        onSettingsChanged={handleSettingsChanged} 
-      />
     </div>
   );
 };
