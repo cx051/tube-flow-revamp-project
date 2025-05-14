@@ -1,4 +1,3 @@
-
 import { toast } from "@/components/ui/sonner";
 
 // YouTube API types
@@ -30,6 +29,15 @@ export interface YouTubeSearchResult {
     favoriteCount: string;
     commentCount: string;
   };
+  // Add these properties to match UnifiedVideo interface
+  title?: string;
+  description?: string;
+  channelTitle?: string;
+  channelId?: string;
+  publishedAt?: string;
+  viewCount?: string;
+  likeCount?: string;
+  thumbnailUrl?: string;
 }
 
 export interface YouTubeVideoDetails {
@@ -122,7 +130,16 @@ export async function fetchYouTubeData(
           videoId: item.id 
         },
         snippet: item.snippet,
-        statistics: item.statistics
+        statistics: item.statistics,
+        // Add these properties to match UnifiedVideo interface
+        title: item.snippet.title,
+        description: item.snippet.description,
+        channelTitle: item.snippet.channelTitle,
+        channelId: item.snippet.channelId,
+        publishedAt: item.snippet.publishedAt,
+        viewCount: item.statistics?.viewCount || "0",
+        likeCount: item.statistics?.likeCount || "0",
+        thumbnailUrl: item.snippet.thumbnails?.high?.url || "",
       }));
     }
     
@@ -177,11 +194,31 @@ export async function fetchYouTubeData(
           if (videoDetails) {
             return {
               ...item,
-              statistics: videoDetails.statistics
+              statistics: videoDetails.statistics,
+              // Add these properties to match UnifiedVideo interface
+              title: item.snippet.title,
+              description: item.snippet.description,
+              channelTitle: item.snippet.channelTitle,
+              channelId: item.snippet.channelId,
+              publishedAt: item.snippet.publishedAt,
+              viewCount: videoDetails.statistics?.viewCount || "0",
+              likeCount: videoDetails.statistics?.likeCount || "0",
+              thumbnailUrl: item.snippet.thumbnails?.high?.url || ""
             };
           }
           
-          return item;
+          return {
+            ...item,
+            // Add these properties to match UnifiedVideo interface
+            title: item.snippet.title,
+            description: item.snippet.description,
+            channelTitle: item.snippet.channelTitle,
+            channelId: item.snippet.channelId,
+            publishedAt: item.snippet.publishedAt,
+            viewCount: "0",
+            likeCount: "0",
+            thumbnailUrl: item.snippet.thumbnails?.high?.url || ""
+          };
         });
       } catch (statisticsError) {
         console.error("Error fetching video statistics:", statisticsError);

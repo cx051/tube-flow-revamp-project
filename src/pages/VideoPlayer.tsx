@@ -6,7 +6,8 @@ import {
   Play, Pause, Volume2, VolumeX, SkipBack, SkipForward, 
   Settings, Maximize, Minimize, ArrowLeft, Volume1, 
   ThumbsUp, Share, List, Download, ChevronDown,
-  ChevronUp, ExternalLink, Theatre, Maximize2, Minimize2
+  ChevronUp, ExternalLink, Theater, Maximize2, Minimize2,
+  ChevronRight, ChevronLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from '@/components/ui/sonner';

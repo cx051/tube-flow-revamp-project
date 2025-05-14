@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { 
   Home, Search, TrendingUp, Settings, ChevronLeft, ChevronRight, 
   ChevronDown, ChevronUp, Film, Music, Gamepad2, Newspaper, 
-  Tv2, Milestone, BookOpen, Child, Camera
+  Tv2, Milestone, BookOpen, Baby, Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -35,7 +35,7 @@ const CATEGORIES: CategoryItem[] = [
   { name: 'Live', icon: Tv2 },
   { name: 'Learning', icon: BookOpen },
   { name: 'Sports', icon: Milestone },
-  { name: 'Kids', icon: Child },
+  { name: 'Kids', icon: Baby },
   { name: 'Technology', icon: Camera },
 ];
 
